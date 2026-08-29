@@ -463,12 +463,13 @@ function render() {
   let stockSelectHtml = allPossibleNames.map(name => `<option value="${name}">${name}</option>`).join('');
   stockSelectHtml += `<option value="CUSTOM_NEW">＋ 自訂全新耗材...</option>`;
   $('addNameSelect').innerHTML = stockSelectHtml;
-  if (currentSelectVal && [...$('addNameSelect').options].some(o => o.value === currentSelectVal)) {
+
+  // 只有在第一次初始載入選單時才初始化輸入框內容，避免每次 render 覆蓋使用者正在輸入的資料
+  if (!currentSelectVal) {
+    onStockSelectChange();
+  } else if ([...$('addNameSelect').options].some(o => o.value === currentSelectVal)) {
     $('addNameSelect').value = currentSelectVal;
   }
-  
-  // 觸發一次欄位自動連動帶入
-  onStockSelectChange();
 
   let stockListHtml = '';
   d.items.forEach(item => {
