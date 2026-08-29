@@ -4,39 +4,43 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>鍍膜營運管理系統 (雲端版)</title>
-  
+
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-  
+
   <!-- SheetJS (Excel 匯出套件) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
     :root {
       --bg: #000000;
-      --panel: #121212;
+      --panel: #1c1c1e;
       --panel-border: #2c2c2e;
-      --text: #f2f2f7;
+      --text: #ffffff;
       --subtext: #8e8e93;
       --primary: #0a84ff;
       --danger: #ff453a;
       --success: #30d158;
+      --warning: #ffd60a;
     }
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background: var(--bg); color: var(--text); margin: 0; padding: 16px; padding-bottom: 80px; }
-    .card { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-    h2 { font-size: 1.2rem; margin-top: 0; margin-bottom: 12px; border-bottom: 1px solid var(--panel-border); padding-bottom: 8px; color: var(--primary); }
+    body { background: var(--bg); color: var(--text); margin: 0; padding: 16px; padding-bottom: 90px; }
+    .card { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 14px; padding: 16px; margin-bottom: 16px; }
+    h2 { font-size: 1.1rem; margin-top: 0; margin-bottom: 14px; color: var(--primary); display: flex; justify-content: space-between; align-items: center; }
     .form-group { margin-bottom: 12px; }
-    label { display: block; font-size: 0.85rem; color: var(--subtext); margin-bottom: 4px; }
-    input, select { width: 100%; padding: 10px; background: #1c1c1e; border: 1px solid var(--panel-border); border-radius: 8px; color: #fff; font-size: 0.95rem; }
-    .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.95rem; }
+    label { display: block; font-size: 0.85rem; color: var(--subtext); margin-bottom: 6px; }
+    input, select { width: 100%; padding: 12px; background: #2c2c2e; border: 1px solid #3a3a3c; border-radius: 10px; color: #fff; font-size: 0.95rem; outline: none; }
+    input:focus, select:focus { border-color: var(--primary); }
+    .btn { width: 100%; padding: 12px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 0.95rem; transition: opacity 0.2s; }
+    .btn:active { opacity: 0.8; }
     .btn-primary { background: var(--primary); color: #fff; }
-    .btn-danger { background: var(--danger); color: #fff; padding: 6px 12px; width: auto; font-size: 0.8rem; }
-    .btn-secondary { background: #2c2c2e; color: #fff; padding: 6px 12px; width: auto; font-size: 0.8rem; }
-    .list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #1c1c1e; }
+    .btn-success { background: var(--success); color: #000; }
+    .btn-danger { background: var(--danger); color: #fff; padding: 6px 12px; width: auto; font-size: 0.8rem; border-radius: 6px; }
+    .btn-secondary { background: #3a3a3c; color: #fff; padding: 6px 12px; width: auto; font-size: 0.8rem; border-radius: 6px; }
+    .list-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #2c2c2e; }
     .list-item:last-child { border-bottom: none; }
-    .flex-row { display: flex; gap: 8px; }
+    .flex-row { display: flex; gap: 8px; align-items: center; }
   </style>
 </head>
 <body>
@@ -61,7 +65,7 @@
       <input type="text" id="carService" placeholder="例：全車鍍膜 / 晶亮維護">
     </div>
     <div class="form-group">
-      <label>實收金額</label>
+      <label>實收金額 ($)</label>
       <input type="number" id="carPrice" placeholder="0">
     </div>
     <button class="btn btn-primary" onclick="addCarRecord()">新增施工紀錄</button>
@@ -71,28 +75,28 @@
   <div class="card">
     <h2>耗材庫存管理</h2>
     <div class="flex-row form-group">
-      <input type="text" id="supplyName" placeholder="耗材名稱 (如：藥劑A)">
-      <input type="number" id="supplyQty" placeholder="數量" style="width: 100px;">
-      <button class="btn btn-primary" style="width: 100px;" onclick="addSupply()">新增</button>
+      <input type="text" id="supplyName" placeholder="耗材名稱 (如：鍍膜藥劑)" style="flex:2;">
+      <input type="number" id="supplyQty" placeholder="數量" style="flex:1;">
+      <button class="btn btn-primary" style="width: auto; padding: 12px 16px;" onclick="addSupply()">新增</button>
     </div>
     <div id="suppliesList">載入耗材資料中...</div>
   </div>
 
   <!-- 3. 月報表匯出與歷史紀錄 -->
   <div class="card">
-    <h2>施工歷史紀錄與匯出</h2>
-    <div class="flex-row form-group" style="align-items: flex-end;">
-      <div style="flex: 1;">
-        <label>選擇匯出月份</label>
-        <input type="month" id="exportMonth">
+    <h2>施工歷史紀錄與報表</h2>
+    <div class="form-group" style="background: #2c2c2e; padding: 12px; border-radius: 10px;">
+      <label style="color: #fff; font-weight: bold;">匯出 Excel 月報表</label>
+      <div class="flex-row" style="margin-top: 6px;">
+        <input type="month" id="exportMonth" style="background: #1c1c1e;">
+        <button class="btn btn-success" style="width: 140px; white-space: nowrap;" onclick="exportMonthlyExcel()">匯出 Excel</button>
       </div>
-      <button class="btn btn-primary" style="width: auto; background: var(--success);" onclick="exportMonthlyExcel()">匯出 Excel</button>
     </div>
-    <div id="carRecordsList">載入施工紀錄中...</div>
+    <div id="carRecordsList" style="margin-top: 10px;">載入施工紀錄中...</div>
   </div>
 
   <script>
-    // Firebase 初始化 (已包含您的設定)
+    // Firebase 初始化
     const firebaseConfig = {
       apiKey: "AIzaSyDummyKeyForTemplate",
       authDomain: "coating-app.firebaseapp.com",
@@ -101,17 +105,16 @@
       messagingSenderId: "123456789",
       appId: "1:123456789:web:abcdef"
     };
-    
-    // 如果已有初始化好的 firebase 實例則直接使用
+
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
     }
     const db = firebase.firestore();
 
-    //預設管理員密碼
+    // 管理員預設密碼
     const ADMIN_PASSWORD = "888";
 
-    // 自動預設今日日期
+    // 預設今天日期
     document.getElementById('carDate').valueAsDate = new Date();
 
     /** 密碼驗證工具 */
@@ -132,7 +135,7 @@
       const price = Number(document.getElementById('carPrice').value || 0);
 
       if (!date || !plate) {
-        alert('請填寫日期與車牌！');
+        alert('請填寫施工日期與車牌！');
         return;
       }
 
@@ -154,7 +157,7 @@
     /** 刪除施工紀錄 (需密碼) */
     async function deleteCarRecord(id) {
       if (!checkAdminPassword()) return;
-      if (!confirm("確定要刪除這筆紀錄嗎？")) return;
+      if (!confirm("確定要刪除這筆施工紀錄嗎？")) return;
 
       try {
         await db.collection("orders").doc(id).delete();
@@ -188,10 +191,10 @@
       alert('庫存已更新！');
     }
 
-    /** 前端匯出 Excel */
+    /** 前端匯出 Excel 報表 */
     async function exportMonthlyExcel() {
       const monthVal = document.getElementById('exportMonth').value;
-      if (!monthVal) return alert('請選擇欲匯出的月份！');
+      if (!monthVal) return alert('請先選擇要匯出的月份！');
 
       const [year, month] = monthVal.split('-');
       const startDate = new Date(year, month - 1, 1);
@@ -203,7 +206,7 @@
           .where("timestamp", "<=", endDate)
           .get();
 
-        if (snapshot.empty) return alert('該月份無任何施工紀錄！');
+        if (snapshot.empty) return alert('該月份尚無任何施工紀錄！');
 
         const excelData = [];
         let total = 0;
@@ -221,7 +224,7 @@
           });
         });
 
-        // 結算列
+        // 加入總計列
         excelData.push({
           "施工日期": "總計",
           "車牌號碼": "",
@@ -243,7 +246,7 @@
     db.collection("orders").orderBy("date", "desc").onSnapshot(snapshot => {
       const container = document.getElementById('carRecordsList');
       if (snapshot.empty) {
-        container.innerHTML = '<p style="color:var(--subtext);">暫無紀錄</p>';
+        container.innerHTML = '<p style="color:var(--subtext); text-align:center;">暫無施工紀錄</p>';
         return;
       }
       let html = '';
@@ -252,8 +255,8 @@
         html += `
           <div class="list-item">
             <div>
-              <strong>${d.plate}</strong> (${d.model || '未填'})<br>
-              <small style="color:var(--subtext);">${d.date} | ${d.service || '無項目'} | $${d.price || 0}</small>
+              <strong style="font-size:1.05rem;">${d.plate}</strong> <span style="color:var(--subtext); font-size:0.9rem;">(${d.model || '未填'})</span><br>
+              <small style="color:var(--subtext);">${d.date} | ${d.service || '無項目'} | <span style="color:var(--success);">$${d.price || 0}</span></small>
             </div>
             <button class="btn btn-danger" onclick="deleteCarRecord('${doc.id}')">刪除</button>
           </div>
@@ -266,7 +269,7 @@
     db.collection("supplies").onSnapshot(snapshot => {
       const container = document.getElementById('suppliesList');
       if (snapshot.empty) {
-        container.innerHTML = '<p style="color:var(--subtext);">暫無耗材</p>';
+        container.innerHTML = '<p style="color:var(--subtext); text-align:center;">暫無耗材資料</p>';
         return;
       }
       let html = '';
@@ -275,8 +278,8 @@
         html += `
           <div class="list-item">
             <div>
-              <strong>${d.name}</strong><br>
-              <small style="color:var(--subtext);">剩餘數量：${d.quantity}</small>
+              <strong style="font-size:1rem;">${d.name}</strong><br>
+              <small style="color:var(--subtext);">剩餘庫存：<span style="color:#fff; font-weight:bold;">${d.quantity}</span></small>
             </div>
             <button class="btn btn-secondary" onclick="adjustSupplyStock('${doc.id}', '${d.name}')">調整庫存</button>
           </div>
