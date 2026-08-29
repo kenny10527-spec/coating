@@ -106,7 +106,6 @@
 </div>
 
 <script>
-// 管理員密碼
 const ADMIN_PASSWORD = "888";
 
 function checkAdminPassword() {
@@ -438,12 +437,12 @@ function render() {
   const polishItems = d.items.filter(i => i.cat === '拋光');
   $('polishSelect').innerHTML = polishItems.map(i => `<option value="${i.name}">${i.name}</option>`).join('');
 
-  // 耗材下拉選單（保存目前選取的值）
+  // 耗材下拉選單（保留目前選取的值，避免每次刷新被強制重置）
   const currentSelectVal = $('addNameSelect').value;
   let stockSelectHtml = d.items.map(i => `<option value="${i.name}">${i.name}</option>`).join('');
   stockSelectHtml += `<option value="CUSTOM_NEW">＋ 自訂全新耗材...</option>`;
   $('addNameSelect').innerHTML = stockSelectHtml;
-  if (currentSelectVal) {
+  if (currentSelectVal && [...$('addNameSelect').options].some(o => o.value === currentSelectVal)) {
     $('addNameSelect').value = currentSelectVal;
   }
   toggleCustomStockName();
