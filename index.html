@@ -156,6 +156,13 @@ const seed = {
 let d = JSON.parse(localStorage.getItem('COATING_SYS_V1')||'null')||structuredClone(seed);
 d.brands = eBrands;
 
+// 自動檢查並補齊缺少的預設耗材
+ALL_PRESET_ITEMS.forEach(preset => {
+  if (!d.items.some(i => i.name === preset.name)) {
+    d.items.push(structuredClone(preset));
+  }
+});
+
 let confirmDelId = null;
 let confirmDelCoatIndex = null;
 
@@ -412,7 +419,6 @@ function render() {
   $('low').innerText = `${lowCount} 項`;
   $('homeLow').innerHTML = lowHtml || '<div class="empty">庫存狀況良好，無警示項目</div>';
 
-  // 最近紀錄
   let recentHtml = '';
   d.coats.slice(0, 10).forEach((c, idx) => {
     recentHtml += `
@@ -427,7 +433,6 @@ function render() {
   });
   $('homeRecent').innerHTML = recentHtml || '<div class="empty">暫無鍍膜施工紀錄</div>';
 
-  // 下拉選單填入
   $('brand').innerHTML = d.brands.map(b => `<option value="${b}">${b}</option>`).join('');
 
   // 漆面鍍膜劑選單：過濾掉「玻璃鍍膜」
@@ -437,9 +442,10 @@ function render() {
   const polishItems = d.items.filter(i => i.cat === '拋光');
   $('polishSelect').innerHTML = polishItems.map(i => `<option value="${i.name}">${i.name}</option>`).join('');
 
-  // 耗材下拉選單（保留目前選取的值，避免每次刷新被強制重置）
+  // 耗材補貨選單：直接讀取 ALL_PRESET_ITEMS 加上現有自訂項目，確保所有預設項目（包含鍍膜藍/綠、拋劑等）絕對不會消失
   const currentSelectVal = $('addNameSelect').value;
-  let stockSelectHtml = d.items.map(i => `<option value="${i.name}">${i.name}</option>`).join('');
+  const allPossibleNames = [...new Set([...ALL_PRESET_ITEMS.map(i => i.name), ...d.items.map(i => i.name)])];
+  let stockSelectHtml = allPossibleNames.map(name => `<option value="${name}">${name}</option>`).join('');
   stockSelectHtml += `<option value="CUSTOM_NEW">＋ 自訂全新耗材...</option>`;
   $('addNameSelect').innerHTML = stockSelectHtml;
   if (currentSelectVal && [...$('addNameSelect').options].some(o => o.value === currentSelectVal)) {
@@ -447,7 +453,6 @@ function render() {
   }
   toggleCustomStockName();
 
-  // 現有耗材清單
   let stockListHtml = '';
   d.items.forEach(item => {
     const isLow = item.stock <= item.safe;
@@ -473,7 +478,6 @@ function render() {
   });
   $('stockList').innerHTML = stockListHtml || '<div class="empty">暫無耗材項目</div>';
 
-  // 報表頁面
   $('rcount').innerText = `${monthCount} 台`;
   $('rcost').innerText = `$${totalCost.toLocaleString()}`;
 
