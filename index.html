@@ -16,7 +16,16 @@
 </head>
 <body>
 <div class="app">
-<header class="top"><div><div class="logo">鍍膜營運管理</div><div class="tag">COATING OPERATIONS SYSTEM</div></div><div style="color:#ffffff;font-size:18px">❖</div></header>
+<header class="top">
+  <div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <div class="logo">鍍膜營運管理</div>
+      <span style="font-size:11px; color:#ffffff; background:#222222; border:1px solid #444444; padding:2px 8px; border-radius:6px; font-weight:bold; letter-spacing:0.5px;">楊廣哲大帥哥</span>
+    </div>
+    <div class="tag">COATING OPERATIONS SYSTEM</div>
+  </div>
+  <div style="color:#ffffff;font-size:18px">❖</div>
+</header>
 
 <main id="home" class="page">
 <section class="hero"><div class="label">今日鍍膜台數</div><div class="heroNum" id="today">0 台</div><div class="label">本月累計 <span class="gold" id="month">0</span> 台</div></section>
@@ -70,7 +79,11 @@
   </div>
   <div class="grid" style="margin-top:0">
     <div class="field"><label>單價 ($/瓶)</label><input id="addPrice" type="number" value="2600"></div>
-    <div class="field"><label>每台車使用量 (瓶/個)</label><input id="addUsePerCar" type="number" value="0.2" step="0.001"></div>
+    <div class="field"><label>每瓶容量 (ml)</label><input id="addVolume" type="number" value="50"></div>
+  </div>
+  <div class="field">
+    <label>每台車使用量 (ml 或 個/條)</label>
+    <input id="addUsePerCar" type="number" value="10">
   </div>
   <button class="btn" onclick="addNewStock()">加入 / 補充庫存</button>
 </div>
@@ -137,18 +150,18 @@ if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
 const eBrands = Array.from({length: 22}, (_, i) => `E${String(i + 1).padStart(2, '0')}`);
 const FIXED_COST_PER_CAR = 1600;
 
-// 預設項目：單位全部回歸「瓶/塊/條」，金額維持原單價，扣量換算為瓶數 (如 10ml/50ml = 0.2瓶)
+// 預設項目：完整修正對照表
 const ALL_PRESET_ITEMS = [
-  {id:1, name:'鍍膜藍', cat:'鍍膜', unit:'瓶', stock:0, safe:2, price:2600, usePerCar:0.2},
-  {id:2, name:'鍍膜綠', cat:'鍍膜', unit:'瓶', stock:0, safe:2, price:2600, usePerCar:0.2},
-  {id:3, name:'鍍膜透明', cat:'鍍膜', unit:'瓶', stock:0, safe:2, price:2600, usePerCar:0.2},
-  {id:4, name:'0號拋劑', cat:'拋光', unit:'瓶', stock:0, safe:2, price:750, usePerCar:0.067},
-  {id:5, name:'1號拋劑', cat:'拋光', unit:'瓶', stock:0, safe:2, price:750, usePerCar:0.067},
-  {id:6, name:'2號拋劑', cat:'拋光', unit:'瓶', stock:0, safe:2, price:750, usePerCar:0.067},
-  {id:7, name:'3號拋劑', cat:'拋光', unit:'瓶', stock:0, safe:2, price:750, usePerCar:0.067},
-  {id:8, name:'玻璃鍍膜', cat:'鍍膜', unit:'瓶', stock:0, safe:2, price:750, usePerCar:0.1},
-  {id:9, name:'鍍膜磚', cat:'耗材', unit:'塊', stock:0, safe:15, price:35, usePerCar:1},
-  {id:10, name:'擦拭布', cat:'耗材', unit:'條', stock:0, safe:30, price:35, usePerCar:4}
+  {id:1, name:'鍍膜藍', cat:'鍍膜', unit:'瓶', volume:50, usePerCarMl:10, stock:0, safe:2, price:2600},
+  {id:2, name:'鍍膜綠', cat:'鍍膜', unit:'瓶', volume:50, usePerCarMl:10, stock:0, safe:2, price:2600},
+  {id:3, name:'鍍膜透明', cat:'鍍膜', unit:'瓶', volume:50, usePerCarMl:10, stock:0, safe:2, price:2600},
+  {id:4, name:'0號拋劑', cat:'拋光', unit:'瓶', volume:300, usePerCarMl:20, stock:0, safe:2, price:750},
+  {id:5, name:'1號拋劑', cat:'拋光', unit:'瓶', volume:300, usePerCarMl:20, stock:0, safe:2, price:750},
+  {id:6, name:'2號拋劑', cat:'拋光', unit:'瓶', volume:300, usePerCarMl:20, stock:0, safe:2, price:750},
+  {id:7, name:'3號拋劑', cat:'拋光', unit:'瓶', volume:300, usePerCarMl:20, stock:0, safe:2, price:750},
+  {id:8, name:'玻璃鍍膜', cat:'鍍膜', unit:'瓶', volume:50, usePerCarMl:5, stock:0, safe:2, price:750},
+  {id:9, name:'鍍膜磚', cat:'耗材', unit:'塊', volume:1, usePerCarMl:1, stock:0, safe:15, price:35},
+  {id:10, name:'擦拭布', cat:'耗材', unit:'條', volume:1, usePerCarMl:4, stock:0, safe:30, price:35}
 ];
 
 const seed = {
@@ -164,7 +177,7 @@ if (!d) {
 }
 d.brands = eBrands;
 
-// 強制校正耗材單位與單車使用量
+// 強制校正耗材規格與單車使用量
 ALL_PRESET_ITEMS.forEach(preset => {
   const exist = d.items.find(i => i.name === preset.name);
   if (!exist) {
@@ -172,7 +185,8 @@ ALL_PRESET_ITEMS.forEach(preset => {
   } else {
     exist.cat = preset.cat;
     exist.unit = preset.unit;
-    exist.usePerCar = preset.usePerCar;
+    exist.volume = preset.volume;
+    exist.usePerCarMl = preset.usePerCarMl;
     exist.price = preset.price;
   }
 });
@@ -230,7 +244,8 @@ function onStockSelectChange() {
     $('addCat').value = '鍍膜';
     $('addUnit').value = '瓶';
     $('addPrice').value = 2600;
-    $('addUsePerCar').value = 0.2;
+    $('addVolume').value = 50;
+    $('addUsePerCar').value = 10;
   } else {
     $('customNameField').classList.add('hide');
     const item = d.items.find(i => i.name === selectVal) || ALL_PRESET_ITEMS.find(i => i.name === selectVal);
@@ -238,7 +253,8 @@ function onStockSelectChange() {
       $('addCat').value = item.cat || '鍍膜';
       $('addUnit').value = item.unit || '瓶';
       $('addPrice').value = item.price !== undefined ? item.price : 2600;
-      $('addUsePerCar').value = item.usePerCar !== undefined ? item.usePerCar : 0.2;
+      $('addVolume').value = item.volume || 50;
+      $('addUsePerCar').value = item.usePerCarMl !== undefined ? item.usePerCarMl : 10;
       if (item.safe !== undefined) {
         $('addSafe').value = item.safe;
       }
@@ -261,7 +277,8 @@ function addNewStock() {
   const addStock = parseFloat($('addStock').value) || 0;
   const safe = parseFloat($('addSafe').value) || 0;
   const price = parseFloat($('addPrice').value) || 0;
-  const usePerCar = parseFloat($('addUsePerCar').value) || 0.2;
+  const volume = parseFloat($('addVolume').value) || 1;
+  const usePerCarMl = parseFloat($('addUsePerCar').value) || 10;
 
   const existing = d.items.find(i => i.name === name);
   if (existing) {
@@ -270,7 +287,8 @@ function addNewStock() {
     existing.unit = unit;
     existing.safe = safe;
     existing.price = price;
-    existing.usePerCar = usePerCar;
+    existing.volume = volume;
+    existing.usePerCarMl = usePerCarMl;
   } else {
     const newId = d.items.length ? Math.max(...d.items.map(i => i.id)) + 1 : 1;
     d.items.push({
@@ -278,10 +296,11 @@ function addNewStock() {
       name,
       cat,
       unit,
+      volume,
+      usePerCarMl,
       stock: addStock,
       safe,
-      price,
-      usePerCar
+      price
     });
   }
 
@@ -338,13 +357,13 @@ function saveCoat() {
 
   d.coats.unshift(coatRecord);
 
-  // 自動扣耗材邏輯
+  // 自動扣耗材邏輯（精確換算瓶數扣除）
   const itemsToDeduct = [coatName, polishName, '玻璃鍍膜', '鍍膜磚', '擦拭布'];
   itemsToDeduct.forEach(itemName => {
     const item = d.items.find(i => i.name === itemName);
     if (item) {
-      const deductQty = (item.usePerCar || 1) * amount;
-      item.stock = Math.max(0, item.stock - deductQty);
+      const deductBottles = ((item.usePerCarMl || 1) / (item.volume || 1)) * amount;
+      item.stock = Math.max(0, item.stock - deductBottles);
     }
   });
 
@@ -485,6 +504,8 @@ function render() {
   let stockListHtml = '';
   d.items.forEach(item => {
     const isLow = item.stock <= item.safe;
+    const unitLabel = item.unit || '瓶';
+    const subLabel = item.unit === '瓶' ? `${item.usePerCarMl}ml` : `${item.usePerCarMl}${unitLabel}`;
     stockListHtml += `
       <div class="stock-item">
         <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -492,10 +513,10 @@ function render() {
             <b style="font-size:16px;">${item.name}</b>
             <span class="pill ${isLow ? 'danger' : ''}">${item.cat}</span>
           </div>
-          <b class="price">$${item.price} / ${item.unit}</b>
+          <b class="price">$${item.price} / ${unitLabel}</b>
         </div>
         <div style="font-size:12px;color:var(--muted);display:flex;justify-content:space-between;align-items:center;">
-          <span>庫存：<strong style="color:${isLow ? '#ff4d4d' : '#fff'};font-size:15px">${Number(item.stock.toFixed(2))}</strong> ${item.unit} (每台扣: ${item.usePerCar || 1} ${item.unit})</span>
+          <span>庫存：<strong style="color:${isLow ? '#ff4d4d' : '#fff'};font-size:15px">${Number(item.stock.toFixed(2))}</strong> ${unitLabel} (每台扣: ${subLabel})</span>
           <div class="stock-ctrls">
             <button onclick="adjustStock(${item.id}, -1)">−1</button>
             <button onclick="adjustStock(${item.id}, 1)">＋1</button>
