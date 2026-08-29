@@ -54,7 +54,7 @@
 <div class="form" style="background:var(--panel);padding:14px;border-radius:14px;border:1px solid var(--panel-border);">
   <div class="field">
     <label>耗材名稱 (選擇現有或選擇自訂)</label>
-    <select id="addNameSelect" onchange="toggleCustomStockName()"></select>
+    <select id="addNameSelect" onchange="onStockSelectChange()"></select>
   </div>
   <div class="field hide" id="customNameField">
     <label>自訂全新耗材名稱</label>
@@ -195,12 +195,25 @@ function qty(n) {
   input.value = val;
 }
 
-function toggleCustomStockName() {
-  const select = $('addNameSelect');
-  if (select.value === 'CUSTOM_NEW') {
+function onStockSelectChange() {
+  const selectVal = $('addNameSelect').value;
+  if (selectVal === 'CUSTOM_NEW') {
     $('customNameField').classList.remove('hide');
+    $('addCat').value = '鍍膜';
+    $('addUnit').value = '瓶';
+    $('addPrice').value = 500;
   } else {
     $('customNameField').classList.add('hide');
+    // 先找現有清單，若無則找預設清單
+    const item = d.items.find(i => i.name === selectVal) || ALL_PRESET_ITEMS.find(i => i.name === selectVal);
+    if (item) {
+      $('addCat').value = item.cat || '鍍膜';
+      $('addUnit').value = item.unit || '瓶';
+      $('addPrice').value = item.price !== undefined ? item.price : 500;
+      if (item.safe !== undefined) {
+        $('addSafe').value = item.safe;
+      }
+    }
   }
 }
 
@@ -223,6 +236,8 @@ function addNewStock() {
   const existing = d.items.find(i => i.name === name);
   if (existing) {
     existing.stock += addStock;
+    existing.cat = cat;
+    existing.unit = unit;
     existing.safe = safe;
     existing.price = price;
   } else {
@@ -442,7 +457,7 @@ function render() {
   const polishItems = d.items.filter(i => i.cat === '拋光');
   $('polishSelect').innerHTML = polishItems.map(i => `<option value="${i.name}">${i.name}</option>`).join('');
 
-  // 耗材補貨選單：直接讀取 ALL_PRESET_ITEMS 加上現有自訂項目，確保所有預設項目（包含鍍膜藍/綠、拋劑等）絕對不會消失
+  // 耗材補貨選單：包含預設項目與現有自訂項目
   const currentSelectVal = $('addNameSelect').value;
   const allPossibleNames = [...new Set([...ALL_PRESET_ITEMS.map(i => i.name), ...d.items.map(i => i.name)])];
   let stockSelectHtml = allPossibleNames.map(name => `<option value="${name}">${name}</option>`).join('');
@@ -451,7 +466,9 @@ function render() {
   if (currentSelectVal && [...$('addNameSelect').options].some(o => o.value === currentSelectVal)) {
     $('addNameSelect').value = currentSelectVal;
   }
-  toggleCustomStockName();
+  
+  // 觸發一次欄位自動連動帶入
+  onStockSelectChange();
 
   let stockListHtml = '';
   d.items.forEach(item => {
