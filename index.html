@@ -93,7 +93,7 @@
 </div>
 
 <div class="section">更多功能</div>
-<button class="btn red" onclick="resetData()">重置示範資料 (庫存歸零)</button>
+<button class="btn red" onclick="resetData()">強制重置資料 (庫存歸零)</button>
 </main>
 
 <nav class="bottom">
@@ -134,7 +134,7 @@ if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
 const eBrands = Array.from({length: 22}, (_, i) => `E${String(i + 1).padStart(2, '0')}`);
 const FIXED_COST_PER_CAR = 1600;
 
-// 將所有預設品項的初始 stock 皆設為 0
+// 所有預設耗材 initial stock 皆為 0
 const ALL_PRESET_ITEMS = [
   {id:1, name:'鍍膜藍', cat:'鍍膜', spec:'50ml', unit:'瓶', stock:0, safe:3, price:2600, usePerCar:20},
   {id:2, name:'鍍膜綠', cat:'鍍膜', spec:'50ml', unit:'瓶', stock:0, safe:3, price:2600, usePerCar:20},
@@ -154,13 +154,19 @@ const seed = {
   coats: []
 };
 
-let d = JSON.parse(localStorage.getItem('COATING_SYS_V1')||'null')||structuredClone(seed);
+// 使用新 key (V2) 強制蓋掉舊版快取中的庫存資料
+let d = JSON.parse(localStorage.getItem('COATING_SYS_V2')||'null');
+if (!d) {
+  d = structuredClone(seed);
+  localStorage.setItem('COATING_SYS_V2', JSON.stringify(d));
+}
 d.brands = eBrands;
 
-// 自動檢查並補齊缺少的預設耗材
-ALL_PRESET_ITEMS.forEach(preset => {
-  if (!d.items.some(i => i.name === preset.name)) {
-    d.items.push(structuredClone(preset));
+// 強制將所有預設耗材歸零
+d.items.forEach(item => {
+  const preset = ALL_PRESET_ITEMS.find(p => p.name === item.name);
+  if (preset && item.stock > 0 && d.coats.length === 0) {
+    item.stock = 0;
   }
 });
 
@@ -170,7 +176,7 @@ let confirmDelCoatIndex = null;
 const $=id=>document.getElementById(id);
 
 function saveData() {
-  localStorage.setItem('COATING_SYS_V1', JSON.stringify(d));
+  localStorage.setItem('COATING_SYS_V2', JSON.stringify(d));
   render();
 }
 
@@ -196,7 +202,6 @@ function qty(n) {
   input.value = val;
 }
 
-// 初始化耗材下拉選單（僅在系統初始化或新增/刪除耗材項目時重新繪制）
 function initStockSelectOptions(keepValue) {
   const selectEl = $('addNameSelect');
   const currentVal = keepValue || selectEl.value;
@@ -214,7 +219,6 @@ function initStockSelectOptions(keepValue) {
   }
 }
 
-// 僅當使用者【主動切換】下拉選單時，才更動輸入框中的數值
 function onStockSelectChange() {
   const selectVal = $('addNameSelect').value;
   if (selectVal === 'CUSTOM_NEW') {
@@ -365,11 +369,11 @@ function deleteCoat(index) {
 function resetData() {
   if (!checkAdminPassword()) return;
 
-  if (confirm('確定要重置為預設資料（庫存歸零）嗎？所有紀錄將被清空！')) {
+  if (confirm('確定要清空所有紀錄並將庫存全數歸零嗎？')) {
     d = structuredClone(seed);
     saveData();
     initStockSelectOptions();
-    alert('已成功重置資料，庫存已全部歸零！');
+    alert('已成功清空，目前庫存已全部為 0！');
   }
 }
 
@@ -472,7 +476,6 @@ function render() {
 
   $('brand').innerHTML = d.brands.map(b => `<option value="${b}">${b}</option>`).join('');
 
-  // 漆面鍍膜劑選單：過濾掉「玻璃鍍膜」
   const coatItems = d.items.filter(i => i.cat === '鍍膜' && i.name !== '玻璃鍍膜');
   $('coatSelect').innerHTML = coatItems.map(i => `<option value="${i.name}">${i.name}</option>`).join('');
 
@@ -528,7 +531,7 @@ function render() {
 
 initDate();
 initStockSelectOptions();
-render();
+saveData();
 </script>
 </body>
 </html>
