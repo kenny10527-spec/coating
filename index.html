@@ -234,6 +234,7 @@ function addNewStock() {
     });
   }
 
+  $('addCustomName').value = '';
   saveData();
   alert('耗材更新成功！');
 }
@@ -391,8 +392,6 @@ function render() {
   let lowCount = 0;
   let lowHtml = '';
 
-  d.coats.forEach(() => {});
-
   d.items.forEach(item => {
     const val = (item.stock || 0) * (item.price || 0);
     stockValue += val;
@@ -429,19 +428,25 @@ function render() {
   });
   $('homeRecent').innerHTML = recentHtml || '<div class="empty">暫無鍍膜施工紀錄</div>';
 
-  // 下拉選單選單填入
+  // 下拉選單填入
   $('brand').innerHTML = d.brands.map(b => `<option value="${b}">${b}</option>`).join('');
 
-  const coatItems = d.items.filter(i => i.cat === '鍍膜');
+  // 漆面鍍膜劑選單：過濾掉「玻璃鍍膜」
+  const coatItems = d.items.filter(i => i.cat === '鍍膜' && i.name !== '玻璃鍍膜');
   $('coatSelect').innerHTML = coatItems.map(i => `<option value="${i.name}">${i.name}</option>`).join('');
 
   const polishItems = d.items.filter(i => i.cat === '拋光');
   $('polishSelect').innerHTML = polishItems.map(i => `<option value="${i.name}">${i.name}</option>`).join('');
 
-  // 耗材下拉選單
+  // 耗材下拉選單（保存目前選取的值）
+  const currentSelectVal = $('addNameSelect').value;
   let stockSelectHtml = d.items.map(i => `<option value="${i.name}">${i.name}</option>`).join('');
   stockSelectHtml += `<option value="CUSTOM_NEW">＋ 自訂全新耗材...</option>`;
   $('addNameSelect').innerHTML = stockSelectHtml;
+  if (currentSelectVal) {
+    $('addNameSelect').value = currentSelectVal;
+  }
+  toggleCustomStockName();
 
   // 現有耗材清單
   let stockListHtml = '';
