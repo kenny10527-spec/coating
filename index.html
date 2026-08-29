@@ -93,7 +93,7 @@
 </div>
 
 <div class="section">更多功能</div>
-<button class="btn red" onclick="resetData()">重置示範資料</button>
+<button class="btn red" onclick="resetData()">重置示範資料 (庫存歸零)</button>
 </main>
 
 <nav class="bottom">
@@ -134,17 +134,18 @@ if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
 const eBrands = Array.from({length: 22}, (_, i) => `E${String(i + 1).padStart(2, '0')}`);
 const FIXED_COST_PER_CAR = 1600;
 
+// 將所有預設品項的初始 stock 皆設為 0
 const ALL_PRESET_ITEMS = [
-  {id:1, name:'鍍膜藍', cat:'鍍膜', spec:'50ml', unit:'瓶', stock:10, safe:3, price:2600, usePerCar:20},
-  {id:2, name:'鍍膜綠', cat:'鍍膜', spec:'50ml', unit:'瓶', stock:10, safe:3, price:2600, usePerCar:20},
-  {id:3, name:'鍍膜透明', cat:'鍍膜', spec:'50ml', unit:'瓶', stock:10, safe:3, price:2600, usePerCar:20},
-  {id:4, name:'0號拋劑', cat:'拋光', spec:'300ml', unit:'瓶', stock:5, safe:2, price:750, usePerCar:20},
-  {id:5, name:'1號拋劑', cat:'拋光', spec:'300ml', unit:'瓶', stock:5, safe:2, price:750, usePerCar:20},
-  {id:6, name:'2號拋劑', cat:'拋光', spec:'300ml', unit:'瓶', stock:5, safe:2, price:750, usePerCar:20},
-  {id:7, name:'3號拋劑', cat:'拋光', spec:'300ml', unit:'瓶', stock:5, safe:2, price:750, usePerCar:20},
-  {id:8, name:'玻璃鍍膜', cat:'鍍膜', spec:'50ml', unit:'瓶', stock:10, safe:3, price:750, usePerCar:5},
-  {id:9, name:'鍍膜磚', cat:'耗材', spec:'個', unit:'個', stock:50, safe:15, price:35, usePerCar:1},
-  {id:10, name:'擦拭布', cat:'耗材', spec:'條', unit:'條', stock:100, safe:30, price:35, usePerCar:4}
+  {id:1, name:'鍍膜藍', cat:'鍍膜', spec:'50ml', unit:'瓶', stock:0, safe:3, price:2600, usePerCar:20},
+  {id:2, name:'鍍膜綠', cat:'鍍膜', spec:'50ml', unit:'瓶', stock:0, safe:3, price:2600, usePerCar:20},
+  {id:3, name:'鍍膜透明', cat:'鍍膜', spec:'50ml', unit:'瓶', stock:0, safe:3, price:2600, usePerCar:20},
+  {id:4, name:'0號拋劑', cat:'拋光', spec:'300ml', unit:'瓶', stock:0, safe:2, price:750, usePerCar:20},
+  {id:5, name:'1號拋劑', cat:'拋光', spec:'300ml', unit:'瓶', stock:0, safe:2, price:750, usePerCar:20},
+  {id:6, name:'2號拋劑', cat:'拋光', spec:'300ml', unit:'瓶', stock:0, safe:2, price:750, usePerCar:20},
+  {id:7, name:'3號拋劑', cat:'拋光', spec:'300ml', unit:'瓶', stock:0, safe:2, price:750, usePerCar:20},
+  {id:8, name:'玻璃鍍膜', cat:'鍍膜', spec:'50ml', unit:'瓶', stock:0, safe:3, price:750, usePerCar:5},
+  {id:9, name:'鍍膜磚', cat:'耗材', spec:'個', unit:'個', stock:0, safe:15, price:35, usePerCar:1},
+  {id:10, name:'擦拭布', cat:'耗材', spec:'條', unit:'條', stock:0, safe:30, price:35, usePerCar:4}
 ];
 
 const seed = {
@@ -195,6 +196,25 @@ function qty(n) {
   input.value = val;
 }
 
+// 初始化耗材下拉選單（僅在系統初始化或新增/刪除耗材項目時重新繪制）
+function initStockSelectOptions(keepValue) {
+  const selectEl = $('addNameSelect');
+  const currentVal = keepValue || selectEl.value;
+  
+  const allPossibleNames = [...new Set([...ALL_PRESET_ITEMS.map(i => i.name), ...d.items.map(i => i.name)])];
+  let html = allPossibleNames.map(name => `<option value="${name}">${name}</option>`).join('');
+  html += `<option value="CUSTOM_NEW">＋ 自訂全新耗材...</option>`;
+  selectEl.innerHTML = html;
+
+  if (currentVal && [...selectEl.options].some(o => o.value === currentVal)) {
+    selectEl.value = currentVal;
+  } else {
+    selectEl.selectedIndex = 0;
+    onStockSelectChange();
+  }
+}
+
+// 僅當使用者【主動切換】下拉選單時，才更動輸入框中的數值
 function onStockSelectChange() {
   const selectVal = $('addNameSelect').value;
   if (selectVal === 'CUSTOM_NEW') {
@@ -204,7 +224,6 @@ function onStockSelectChange() {
     $('addPrice').value = 500;
   } else {
     $('customNameField').classList.add('hide');
-    // 先找現有清單，若無則找預設清單
     const item = d.items.find(i => i.name === selectVal) || ALL_PRESET_ITEMS.find(i => i.name === selectVal);
     if (item) {
       $('addCat').value = item.cat || '鍍膜';
@@ -257,6 +276,7 @@ function addNewStock() {
 
   $('addCustomName').value = '';
   saveData();
+  initStockSelectOptions(name);
   alert('耗材更新成功！');
 }
 
@@ -276,6 +296,7 @@ function deleteStockItem(id) {
   if (confirm('確定要刪除這項耗材嗎？')) {
     d.items = d.items.filter(i => i.id !== id);
     saveData();
+    initStockSelectOptions();
   }
 }
 
@@ -344,10 +365,11 @@ function deleteCoat(index) {
 function resetData() {
   if (!checkAdminPassword()) return;
 
-  if (confirm('確定要重置為示範資料嗎？所有紀錄將被清空！')) {
+  if (confirm('確定要重置為預設資料（庫存歸零）嗎？所有紀錄將被清空！')) {
     d = structuredClone(seed);
     saveData();
-    alert('已成功重置資料！');
+    initStockSelectOptions();
+    alert('已成功重置資料，庫存已全部歸零！');
   }
 }
 
@@ -457,20 +479,6 @@ function render() {
   const polishItems = d.items.filter(i => i.cat === '拋光');
   $('polishSelect').innerHTML = polishItems.map(i => `<option value="${i.name}">${i.name}</option>`).join('');
 
-  // 耗材補貨選單：包含預設項目與現有自訂項目
-  const currentSelectVal = $('addNameSelect').value;
-  const allPossibleNames = [...new Set([...ALL_PRESET_ITEMS.map(i => i.name), ...d.items.map(i => i.name)])];
-  let stockSelectHtml = allPossibleNames.map(name => `<option value="${name}">${name}</option>`).join('');
-  stockSelectHtml += `<option value="CUSTOM_NEW">＋ 自訂全新耗材...</option>`;
-  $('addNameSelect').innerHTML = stockSelectHtml;
-
-  // 只有在第一次初始載入選單時才初始化輸入框內容，避免每次 render 覆蓋使用者正在輸入的資料
-  if (!currentSelectVal) {
-    onStockSelectChange();
-  } else if ([...$('addNameSelect').options].some(o => o.value === currentSelectVal)) {
-    $('addNameSelect').value = currentSelectVal;
-  }
-
   let stockListHtml = '';
   d.items.forEach(item => {
     const isLow = item.stock <= item.safe;
@@ -519,6 +527,7 @@ function render() {
 }
 
 initDate();
+initStockSelectOptions();
 render();
 </script>
 </body>
