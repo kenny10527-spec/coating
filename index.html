@@ -154,29 +154,19 @@ const seed = {
   coats: []
 };
 
-// 使用新 key (V2) 強制蓋掉舊版快取中的庫存資料
-let d = JSON.parse(localStorage.getItem('COATING_SYS_V2')||'null');
+// 讀取 LocalStorage 快取
+let d = JSON.parse(localStorage.getItem('COATING_SYS_V3')||'null');
 if (!d) {
+  // 只有在第一次載入（完全沒資料）時，初始化為 0 庫存
   d = structuredClone(seed);
-  localStorage.setItem('COATING_SYS_V2', JSON.stringify(d));
+  localStorage.setItem('COATING_SYS_V3', JSON.stringify(d));
 }
 d.brands = eBrands;
-
-// 強制將所有預設耗材歸零
-d.items.forEach(item => {
-  const preset = ALL_PRESET_ITEMS.find(p => p.name === item.name);
-  if (preset && item.stock > 0 && d.coats.length === 0) {
-    item.stock = 0;
-  }
-});
-
-let confirmDelId = null;
-let confirmDelCoatIndex = null;
 
 const $=id=>document.getElementById(id);
 
 function saveData() {
-  localStorage.setItem('COATING_SYS_V2', JSON.stringify(d));
+  localStorage.setItem('COATING_SYS_V3', JSON.stringify(d));
   render();
 }
 
@@ -531,7 +521,7 @@ function render() {
 
 initDate();
 initStockSelectOptions();
-saveData();
+render();
 </script>
 </body>
 </html>
