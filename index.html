@@ -142,61 +142,32 @@ const firebaseConfig = {
   measurementId: "G-1BY53F0JGM"
 };
 
-if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
-  firebase.initializeApp(firebaseConfig);
-  var db = firebase.firestore();
-}
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
 const eBrands = Array.from({length: 22}, (_, i) => `E${String(i + 1).padStart(2, '0')}`);
 const FIXED_COST_PER_CAR = 1600;
 
-// 預設項目：完整修正對照表
 const ALL_PRESET_ITEMS = [
-  {id:1, name:'鍍膜藍', cat:'鍍膜', unit:'瓶', volume:50, usePerCarMl:10, stock:0, safe:2, price:2600},
-  {id:2, name:'鍍膜綠', cat:'鍍膜', unit:'瓶', volume:50, usePerCarMl:10, stock:0, safe:2, price:2600},
-  {id:3, name:'鍍膜透明', cat:'鍍膜', unit:'瓶', volume:50, usePerCarMl:10, stock:0, safe:2, price:2600},
-  {id:4, name:'0號拋劑', cat:'拋光', unit:'瓶', volume:300, usePerCarMl:20, stock:0, safe:2, price:750},
-  {id:5, name:'1號拋劑', cat:'拋光', unit:'瓶', volume:300, usePerCarMl:20, stock:0, safe:2, price:750},
-  {id:6, name:'2號拋劑', cat:'拋光', unit:'瓶', volume:300, usePerCarMl:20, stock:0, safe:2, price:750},
-  {id:7, name:'3號拋劑', cat:'拋光', unit:'瓶', volume:300, usePerCarMl:20, stock:0, safe:2, price:750},
-  {id:8, name:'玻璃鍍膜', cat:'鍍膜', unit:'瓶', volume:50, usePerCarMl:5, stock:0, safe:2, price:750},
-  {id:9, name:'鍍膜磚', cat:'耗材', unit:'塊', volume:1, usePerCarMl:1, stock:0, safe:15, price:35},
-  {id:10, name:'擦拭布', cat:'耗材', unit:'條', volume:1, usePerCarMl:4, stock:0, safe:30, price:35}
+  {id:'p1', name:'鍍膜藍', cat:'鍍膜', unit:'瓶', volume:50, usePerCarMl:10, stock:0, safe:2, price:2600},
+  {id:'p2', name:'鍍膜綠', cat:'鍍膜', unit:'瓶', volume:50, usePerCarMl:10, stock:0, safe:2, price:2600},
+  {id:'p3', name:'鍍膜透明', cat:'鍍膜', unit:'瓶', volume:50, usePerCarMl:10, stock:0, safe:2, price:2600},
+  {id:'p4', name:'0號拋劑', cat:'拋光', unit:'瓶', volume:300, usePerCarMl:20, stock:0, safe:2, price:750},
+  {id:'p5', name:'1號拋劑', cat:'拋光', unit:'瓶', volume:300, usePerCarMl:20, stock:0, safe:2, price:750},
+  {id:'p6', name:'2號拋劑', cat:'拋光', unit:'瓶', volume:300, usePerCarMl:20, stock:0, safe:2, price:750},
+  {id:'p7', name:'3號拋劑', cat:'拋光', unit:'瓶', volume:300, usePerCarMl:20, stock:0, safe:2, price:750},
+  {id:'p8', name:'玻璃鍍膜', cat:'鍍膜', unit:'瓶', volume:50, usePerCarMl:5, stock:0, safe:2, price:750},
+  {id:'p9', name:'鍍膜磚', cat:'耗材', unit:'塊', volume:1, usePerCarMl:1, stock:0, safe:15, price:35},
+  {id:'p10', name:'擦拭布', cat:'耗材', unit:'條', volume:1, usePerCarMl:4, stock:0, safe:30, price:35}
 ];
 
-const seed = {
+let appData = {
   brands: eBrands,
   items: structuredClone(ALL_PRESET_ITEMS),
   coats: []
 };
 
-let d = JSON.parse(localStorage.getItem('COATING_SYS_V4')||'null');
-if (!d) {
-  d = structuredClone(seed);
-  localStorage.setItem('COATING_SYS_V4', JSON.stringify(d));
-}
-d.brands = eBrands;
-
-// 強制校正耗材規格與單車使用量
-ALL_PRESET_ITEMS.forEach(preset => {
-  const exist = d.items.find(i => i.name === preset.name);
-  if (!exist) {
-    d.items.push(structuredClone(preset));
-  } else {
-    exist.cat = preset.cat;
-    exist.unit = preset.unit;
-    exist.volume = preset.volume;
-    exist.usePerCarMl = preset.usePerCarMl;
-    exist.price = preset.price;
-  }
-});
-
 const $=id=>document.getElementById(id);
-
-function saveData() {
-  localStorage.setItem('COATING_SYS_V4', JSON.stringify(d));
-  render();
-}
 
 function initDate() {
   const today = new Date().toISOString().split('T')[0];
@@ -224,7 +195,7 @@ function initStockSelectOptions(keepValue) {
   const selectEl = $('addNameSelect');
   const currentVal = keepValue || selectEl.value;
   
-  const allPossibleNames = [...new Set([...ALL_PRESET_ITEMS.map(i => i.name), ...d.items.map(i => i.name)])];
+  const allPossibleNames = [...new Set([...ALL_PRESET_ITEMS.map(i => i.name), ...appData.items.map(i => i.name)])];
   let html = allPossibleNames.map(name => `<option value="${name}">${name}</option>`).join('');
   html += `<option value="CUSTOM_NEW">＋ 自訂全新耗材...</option>`;
   selectEl.innerHTML = html;
@@ -248,7 +219,7 @@ function onStockSelectChange() {
     $('addUsePerCar').value = 10;
   } else {
     $('customNameField').classList.add('hide');
-    const item = d.items.find(i => i.name === selectVal) || ALL_PRESET_ITEMS.find(i => i.name === selectVal);
+    const item = appData.items.find(i => i.name === selectVal) || ALL_PRESET_ITEMS.find(i => i.name === selectVal);
     if (item) {
       $('addCat').value = item.cat || '鍍膜';
       $('addUnit').value = item.unit || '瓶';
@@ -260,6 +231,42 @@ function onStockSelectChange() {
       }
     }
   }
+}
+
+// 雲端資料同步監聽 (Firestore Realtime Listener)
+function setupCloudSync() {
+  // 1. 同步耗材庫存
+  db.collection("items").onSnapshot(snapshot => {
+    if (!snapshot.empty) {
+      let cloudItems = [];
+      snapshot.forEach(doc => {
+        cloudItems.push({ docId: doc.id, ...doc.data() });
+      });
+      appData.items = cloudItems;
+    } else {
+      // 若雲端無資料，初始化預設項目寫入雲端
+      ALL_PRESET_ITEMS.forEach(item => {
+        db.collection("items").doc(item.id).set(item);
+      });
+      appData.items = structuredClone(ALL_PRESET_ITEMS);
+    }
+    initStockSelectOptions();
+    render();
+  }, err => {
+    console.error("同步耗材失敗: ", err);
+  });
+
+  // 2. 同步施工紀錄
+  db.collection("coats").orderBy("createdAt", "desc").onSnapshot(snapshot => {
+    let cloudCoats = [];
+    snapshot.forEach(doc => {
+      cloudCoats.push({ firestoreId: doc.id, ...doc.data() });
+    });
+    appData.coats = cloudCoats;
+    render();
+  }, err => {
+    console.error("同步紀錄失敗: ", err);
+  });
 }
 
 function addNewStock() {
@@ -280,18 +287,27 @@ function addNewStock() {
   const volume = parseFloat($('addVolume').value) || 1;
   const usePerCarMl = parseFloat($('addUsePerCar').value) || 10;
 
-  const existing = d.items.find(i => i.name === name);
+  const existing = appData.items.find(i => i.name === name);
+  
   if (existing) {
-    existing.stock += addStock;
-    existing.cat = cat;
-    existing.unit = unit;
-    existing.safe = safe;
-    existing.price = price;
-    existing.volume = volume;
-    existing.usePerCarMl = usePerCarMl;
+    const updatedStock = existing.stock + addStock;
+    const docRef = db.collection("items").doc(existing.docId || existing.id.toString());
+    docRef.update({
+      stock: updatedStock,
+      cat,
+      unit,
+      safe,
+      price,
+      volume,
+      usePerCarMl
+    }).then(() => {
+      $('addCustomName').value = '';
+      initStockSelectOptions(name);
+      alert('耗材庫存補充成功！');
+    }).catch(err => alert('更新失敗: ' + err.message));
   } else {
-    const newId = d.items.length ? Math.max(...d.items.map(i => i.id)) + 1 : 1;
-    d.items.push({
+    const newId = 'item_' + Date.now();
+    const newItem = {
       id: newId,
       name,
       cat,
@@ -301,32 +317,37 @@ function addNewStock() {
       stock: addStock,
       safe,
       price
-    });
+    };
+    db.collection("items").doc(newId).set(newItem).then(() => {
+      $('addCustomName').value = '';
+      initStockSelectOptions(name);
+      alert('新增耗材成功！');
+    }).catch(err => alert('新增失敗: ' + err.message));
   }
-
-  $('addCustomName').value = '';
-  saveData();
-  initStockSelectOptions(name);
-  alert('耗材庫存補充成功！');
 }
 
-function adjustStock(id, diff) {
+function adjustStock(docId, diff) {
   if (!checkAdminPassword()) return;
 
-  const item = d.items.find(i => i.id === id);
+  const item = appData.items.find(i => (i.docId === docId || i.id === docId));
   if (item) {
-    item.stock = Math.max(0, item.stock + diff);
-    saveData();
+    const newStock = Math.max(0, item.stock + diff);
+    db.collection("items").doc(item.docId || item.id.toString()).update({
+      stock: newStock
+    }).catch(err => alert('庫存調整失敗: ' + err.message));
   }
 }
 
-function deleteStockItem(id) {
+function deleteStockItem(docId) {
   if (!checkAdminPassword()) return;
 
   if (confirm('確定要刪除這項耗材嗎？')) {
-    d.items = d.items.filter(i => i.id !== id);
-    saveData();
-    initStockSelectOptions();
+    const item = appData.items.find(i => (i.docId === docId || i.id === docId));
+    if (item) {
+      db.collection("items").doc(item.docId || item.id.toString()).delete().then(() => {
+        initStockSelectOptions();
+      }).catch(err => alert('刪除失敗: ' + err.message));
+    }
   }
 }
 
@@ -344,7 +365,6 @@ function saveCoat() {
   if (!brand) return alert('請選擇廠別！');
 
   const coatRecord = {
-    id: Date.now(),
     date,
     brand,
     model: model || '未填寫',
@@ -352,47 +372,59 @@ function saveCoat() {
     plate: plate || '無車牌',
     coatName,
     polishName,
-    amount
+    amount,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
   };
 
-  d.coats.unshift(coatRecord);
-
-  // 自動扣耗材邏輯（精確換算瓶數扣除）
+  // 自動扣除耗材庫存
   const itemsToDeduct = [coatName, polishName, '玻璃鍍膜', '鍍膜磚', '擦拭布'];
   itemsToDeduct.forEach(itemName => {
-    const item = d.items.find(i => i.name === itemName);
+    const item = appData.items.find(i => i.name === itemName);
     if (item) {
       const deductBottles = ((item.usePerCarMl || 1) / (item.volume || 1)) * amount;
-      item.stock = Math.max(0, item.stock - deductBottles);
+      const newStock = Math.max(0, item.stock - deductBottles);
+      db.collection("items").doc(item.docId || item.id.toString()).update({
+        stock: newStock
+      });
     }
   });
 
-  if (db) {
-    db.collection("coats").add(coatRecord).catch(err => console.error("Firebase error: ", err));
-  }
-
-  saveData();
-  alert('施工紀錄新增成功，已自動扣除庫存！');
-  show('home');
+  db.collection("coats").add(coatRecord).then(() => {
+    alert('施工紀錄新增成功，已同步至雲端並自動扣除庫存！');
+    $('model').value = '';
+    $('color').value = '';
+    $('plate').value = '';
+    $('amount').value = 1;
+    show('home');
+  }).catch(err => alert('新增施工紀錄失敗: ' + err.message));
 }
 
-function deleteCoat(index) {
+function deleteCoat(firestoreId) {
   if (!checkAdminPassword()) return;
 
   if (confirm('確定要刪除這筆鍍膜紀錄嗎？')) {
-    d.coats.splice(index, 1);
-    saveData();
+    db.collection("coats").doc(firestoreId).delete().catch(err => alert('刪除失敗: ' + err.message));
   }
 }
 
 function resetData() {
   if (!checkAdminPassword()) return;
 
-  if (confirm('確定要清空所有紀錄並將庫存全數歸零嗎？')) {
-    d = structuredClone(seed);
-    saveData();
-    initStockSelectOptions();
-    alert('已成功清空，目前庫存已全部為 0！');
+  if (confirm('確定要將所有庫存全數歸零並清除雲端施工紀錄嗎？')) {
+    // 庫存歸零
+    appData.items.forEach(item => {
+      db.collection("items").doc(item.docId || item.id.toString()).update({ stock: 0 });
+    });
+    // 刪除所有紀錄
+    db.collection("coats").get().then(snapshot => {
+      let batch = db.batch();
+      snapshot.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+      return batch.commit();
+    }).then(() => {
+      alert('已成功重置，雲端資料已歸零！');
+    }).catch(err => alert('重置失敗: ' + err.message));
   }
 }
 
@@ -400,7 +432,7 @@ function exportMonthlyExcel() {
   const monthVal = $('exportMonth').value;
   if (!monthVal) return alert('請選擇欲匯出的月份！');
 
-  const monthCoats = d.coats.filter(c => c.date && c.date.startsWith(monthVal));
+  const monthCoats = appData.coats.filter(c => c.date && c.date.startsWith(monthVal));
   if (monthCoats.length === 0) return alert('該月份無任何施工紀錄！');
 
   let totalCars = 0;
@@ -442,7 +474,7 @@ function render() {
   let todayCount = 0;
   let monthCount = 0;
 
-  d.coats.forEach(c => {
+  appData.coats.forEach(c => {
     if (c.date === todayStr) todayCount += c.amount;
     if (c.date && c.date.startsWith(thisMonthStr)) monthCount += c.amount;
   });
@@ -458,7 +490,7 @@ function render() {
   let lowCount = 0;
   let lowHtml = '';
 
-  d.items.forEach(item => {
+  appData.items.forEach(item => {
     const val = (item.stock || 0) * (item.price || 0);
     stockValue += val;
     if (item.stock <= item.safe) {
@@ -480,9 +512,9 @@ function render() {
   $('homeLow').innerHTML = lowHtml || '<div class="empty">庫存狀況良好，無警示項目</div>';
 
   let recentHtml = '';
-  d.coats.slice(0, 10).forEach((c, idx) => {
+  appData.coats.slice(0, 10).forEach(c => {
     recentHtml += `
-      <div class="row" onclick="deleteCoat(${idx})" style="cursor:pointer">
+      <div class="row" onclick="deleteCoat('${c.firestoreId}')" style="cursor:pointer" title="點擊刪除此紀錄">
         <div>
           <b>${c.brand} - ${c.model} (${c.color})</b>
           <small>${c.date} | 車牌: ${c.plate} | 藥水: ${c.coatName}</small>
@@ -493,19 +525,20 @@ function render() {
   });
   $('homeRecent').innerHTML = recentHtml || '<div class="empty">暫無鍍膜施工紀錄</div>';
 
-  $('brand').innerHTML = d.brands.map(b => `<option value="${b}">${b}</option>`).join('');
+  $('brand').innerHTML = eBrands.map(b => `<option value="${b}">${b}</option>`).join('');
 
-  const coatItems = d.items.filter(i => i.cat === '鍍膜' && i.name !== '玻璃鍍膜');
+  const coatItems = appData.items.filter(i => i.cat === '鍍膜' && i.name !== '玻璃鍍膜');
   $('coatSelect').innerHTML = coatItems.map(i => `<option value="${i.name}">${i.name}</option>`).join('');
 
-  const polishItems = d.items.filter(i => i.cat === '拋光');
+  const polishItems = appData.items.filter(i => i.cat === '拋光');
   $('polishSelect').innerHTML = polishItems.map(i => `<option value="${i.name}">${i.name}</option>`).join('');
 
   let stockListHtml = '';
-  d.items.forEach(item => {
+  appData.items.forEach(item => {
     const isLow = item.stock <= item.safe;
     const unitLabel = item.unit || '瓶';
     const subLabel = item.unit === '瓶' ? `${item.usePerCarMl}ml` : `${item.usePerCarMl}${unitLabel}`;
+    const targetId = item.docId || item.id;
     stockListHtml += `
       <div class="stock-item">
         <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -518,9 +551,9 @@ function render() {
         <div style="font-size:12px;color:var(--muted);display:flex;justify-content:space-between;align-items:center;">
           <span>庫存：<strong style="color:${isLow ? '#ff4d4d' : '#fff'};font-size:15px">${Number(item.stock.toFixed(2))}</strong> ${unitLabel} (每台扣: ${subLabel})</span>
           <div class="stock-ctrls">
-            <button onclick="adjustStock(${item.id}, -1)">−1</button>
-            <button onclick="adjustStock(${item.id}, 1)">＋1</button>
-            <button onclick="deleteStockItem(${item.id})" style="border-color:#ff4d4d;color:#ff4d4d">刪除</button>
+            <button onclick="adjustStock('${targetId}', -1)">−1</button>
+            <button onclick="adjustStock('${targetId}', 1)">＋1</button>
+            <button onclick="deleteStockItem('${targetId}')" style="border-color:#ff4d4d;color:#ff4d4d">刪除</button>
           </div>
         </div>
       </div>
@@ -532,7 +565,7 @@ function render() {
   $('rcost').innerText = `$${totalCost.toLocaleString()}`;
 
   const brandCounts = {};
-  d.coats.forEach(c => {
+  appData.coats.forEach(c => {
     if (c.date && c.date.startsWith(thisMonthStr)) {
       brandCounts[c.brand] = (brandCounts[c.brand] || 0) + c.amount;
     }
@@ -551,8 +584,7 @@ function render() {
 }
 
 initDate();
-initStockSelectOptions();
-render();
+setupCloudSync();
 </script>
 </body>
 </html>
